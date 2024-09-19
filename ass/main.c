@@ -4,6 +4,11 @@
 #include <assert.h>
 #include <stdint.h>
 
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+
 typedef uint8_t byte;
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -73,10 +78,6 @@ typedef struct {
 	int len;
 	TokenType type;
 } Token;
-typedef struct {
-	char *str;
-	int len;
-} TokenWithNoType;
 
 typedef struct {
 	char *str;
@@ -85,15 +86,6 @@ typedef struct {
 	int max;
 	int pos;
 } Lexer;
-
-static inline TokenWithNoType token_with_no_type_of_token(Token *token) {
-	TokenWithNoType twnt;
-	twnt.str = malloc(token->len);
-	assert(twnt.str != NULL);
-	memcpy(twnt.str, token->str, token->len);
-	twnt.len = token->len;
-	return twnt;
-}
 
 void lexer_copy_string(Lexer *lexer, char *str) {
 	lexer->max = strlen(str) + 1;
@@ -117,9 +109,6 @@ char lexer_get_ch(Lexer *lexer, int index) {
 		return 0;
 	}
 }
-
-// id =
-//   alpha .. alphanumeric * | '_' *
 
 int is_alpha(char c) {
 	return (('a' <= c && c <= 'z') ||
@@ -146,16 +135,6 @@ void token_set(Token *token, char *str, int len, TokenType type) {
 	token->str[len] = '\0';
 	token->len = len;
 	token->type = type;
-}
-
-int find_number_len(char *str) {
-	int len;
-	for(len = 1; str[len] != '\0'; len++) {
-		if(!is_number(str[len])) {
-			return len;
-		}
-	}
-	return len;
 }
 
 int find_string_len(char *str) {
@@ -588,7 +567,6 @@ main(int argc, char **argv) {
 	printf("argv[1] = %s\n", argv[1]);
 	printf("argv[2] = %s\n", argv[2]);
 	Lexer lexer;
-
 	lexer_init(&lexer);
 
 	char *program;
