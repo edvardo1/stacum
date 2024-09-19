@@ -1,0 +1,18 @@
+/*.data
+	/*: str #( str - str_end ) :u8 "string_example" : str_end */
+	/* $str db{ "string example" , 0 } */
+.code*/
+
+: @main
+	push 10
+	jmp @skip_20
+
+	push &U32 1 &U32 1
+	add
+	exit_gracefully
+
+: @skip_20
+	push 30
+	add
+
+	exit_gracefully
