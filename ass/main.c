@@ -160,7 +160,6 @@ int is_id_char(char c) {
 int find_id_len(char *str) {
 	int len;
 	for(len = 1; str[len] != '\0'; len++) {
-		//if(!(is_alphanumeric(str[len]) || str[len] == '_')) {
 		if(!is_id_char(str[len])) {
 			return len;
 		}
@@ -489,8 +488,6 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 
 		for(int i = 0; i < ass->labels_c; i++) {
 			if(strncmp(t->str, ass->labels[i].str, t->len) == 0) {
-				//printf("%20s -> %016x: %lx\n",
-				//       t->str, buf_index, ass->labels[i].pos);
 				buf[buf_index++] = (ass->labels[i].pos >> 56) & 0xff;
 				buf[buf_index++] = (ass->labels[i].pos >> 48) & 0xff;
 				buf[buf_index++] = (ass->labels[i].pos >> 40) & 0xff;
@@ -505,7 +502,6 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 			}
 		}
 		if(is_instruction(t, &inst)) {
-			//printf("%20s -> %016x: %s\n", t->str, buf_index, inst_string[inst]);
 			buf[buf_index++] = inst;
 		} else if(t->str[0] == '&') {
 			int i;
@@ -521,15 +517,6 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 			next_size = type_array[i].bytesize;
 		} else if(token_is_number(t)) {
 			u64 num = token_get_number(t);
-			//printf("%20s -> %016x: %lx\n", t->str, buf_index, num);
-			//buf[buf_index++] = (num >> 56) & 0xff;
-			//buf[buf_index++] = (num >> 48) & 0xff;
-			//buf[buf_index++] = (num >> 40) & 0xff;
-			//buf[buf_index++] = (num >> 32) & 0xff;
-			//buf[buf_index++] = (num >> 24) & 0xff;
-			//buf[buf_index++] = (num >> 16) & 0xff;
-			//buf[buf_index++] = (num >> 8)  & 0xff;
-			//buf[buf_index++] = (num >> 0)  & 0xff;
 			if(next_size == 0) {
 				next_size = 8;
 			}
@@ -544,16 +531,8 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 	}
 	int buf_size = buf_index;
 
-	for(int i = 0; i < buf_size; i++) {
-		//printf("%x\n", buf[i]);
-	}
-
 	*output = buf;
 	*output_size = buf_size;
-	//for(int i = 0; i < buf_size; i++) {
-	//	printf("%x ", buf[i]);
-	//}
-	//fputc('\n', stdout);
 
 	return 1;
 }
