@@ -23,12 +23,12 @@ typedef enum {
 	MUL,
 	DIV,
 	MOD,
-        AND,
-        BWAND,
-        OR,
-        BWOR,
-        NOT,
-        BWNOT,
+	AND,
+	BWAND,
+	OR,
+	BWOR,
+	NOT,
+	BWNOT,
 	XOR,
 	BWXOR,
 	NOR,
@@ -72,12 +72,12 @@ char *inst_string[] = {
 	[MUL] = "MUL",
 	[DIV] = "DIV",
 	[MOD] = "MOD",
-        [AND] = "AND",
-        [BWAND] = "BWAND",
-        [OR] = "OR",
-        [BWOR] = "BWOR",
-        [NOT] = "NOT",
-        [BWNOT] = "BWNOT",
+	[AND] = "AND",
+	[BWAND] = "BWAND",
+	[OR] = "OR",
+	[BWOR] = "BWOR",
+	[NOT] = "NOT",
+	[BWNOT] = "BWNOT",
 	[XOR] = "XOR",
 	[BWXOR] = "BWXOR",
 	[NOR] = "NOR",
@@ -284,31 +284,31 @@ stacum_step(Stacum_VM *vm) {
 		u64 b = stacum_stack_pop(vm);
 		stacum_stack_push(vm, b % a);
 	} break;
-        case AND : {
+	case AND : {
 		u64 a = stacum_stack_pop(vm);
 		u64 b = stacum_stack_pop(vm);
 		stacum_stack_push(vm, b && a);
 	} break;
-        case BWAND : {
+	case BWAND : {
 		u64 a = stacum_stack_pop(vm);
 		u64 b = stacum_stack_pop(vm);
 		stacum_stack_push(vm, b & a);
 	} break;
-        case OR : {
+	case OR : {
 		u64 a = stacum_stack_pop(vm);
 		u64 b = stacum_stack_pop(vm);
 		stacum_stack_push(vm, b || a);
 	} break;
-        case BWOR : {
+	case BWOR : {
 		u64 a = stacum_stack_pop(vm);
 		u64 b = stacum_stack_pop(vm);
 		stacum_stack_push(vm, b | a);
 	} break;
-        case NOT : {
+	case NOT : {
 		u64 a = stacum_stack_pop(vm);
 		stacum_stack_push(vm, !a);
 	} break;
-        case BWNOT : {
+	case BWNOT : {
 		u64 a = stacum_stack_pop(vm);
 		stacum_stack_push(vm, ~a);
 	} break;
