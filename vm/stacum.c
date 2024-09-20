@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
+#include <dlfcn.h>
 
 typedef uint8_t byte;
 typedef uint8_t u8;
@@ -111,14 +112,16 @@ char *inst_string[] = {
 	[GEQ] = "GEQ"
 };
 
+typedef u64 (*dynamic_function)();
+
 #define PROCEDURE_POINTERS_SIZE (1024)
 #define CALL_STACK_SIZE (256)
 #define STACK_SIZE (256)
-#define HEAP_SIZE (4096)
+#define HEAP_SIZE (4096 * 8)
 typedef struct {
 	byte program[PROGRAM_SIZE];
 	u64 stack[STACK_SIZE];
-	u64 *heap;
+	u8 *heap;
 
 	int pc; // program counter
 
@@ -197,38 +200,31 @@ error:
 
 INST
 stacum_get_program_inst(Stacum_VM *vm) {
-	printf("\n0x%16x  %s ", vm->pc, inst_string[vm->program[vm->pc]]);
 	return (INST)vm->program[vm->pc++];
 }
 byte
 stacum_get_program_byte(Stacum_VM *vm) {
-	printf(" %x", vm->program[vm->pc]);
-	return vm->program[vm->pc++];
-}
-byte
-stacum_get_program_nodebugbyte(Stacum_VM *vm) {
 	return vm->program[vm->pc++];
 }
 u64
 stacum_get_program_u64(Stacum_VM *vm) {
-	u64 a = stacum_get_program_nodebugbyte(vm);
-	u64 b = stacum_get_program_nodebugbyte(vm);
-	u64 c = stacum_get_program_nodebugbyte(vm);
-	u64 d = stacum_get_program_nodebugbyte(vm);
-	u64 e = stacum_get_program_nodebugbyte(vm);
-	u64 f = stacum_get_program_nodebugbyte(vm);
-	u64 g = stacum_get_program_nodebugbyte(vm);
-	u64 h = stacum_get_program_nodebugbyte(vm);
+	u64 a = stacum_get_program_byte(vm);
+	u64 b = stacum_get_program_byte(vm);
+	u64 c = stacum_get_program_byte(vm);
+	u64 d = stacum_get_program_byte(vm);
+	u64 e = stacum_get_program_byte(vm);
+	u64 f = stacum_get_program_byte(vm);
+	u64 g = stacum_get_program_byte(vm);
+	u64 h = stacum_get_program_byte(vm);
 
-	u64 ret = (((a >> 56) & 0xff) |
-		   ((b >> 48) & 0xff) |
-		   ((c >> 40) & 0xff) |
-		   ((d >> 32) & 0xff) |
-		   ((e >> 24) & 0xff) |
-		   ((f >> 16) & 0xff) |
-		   ((g >> 8 ) & 0xff) |
-		   ((h >> 0 ) & 0xff));
-	printf(" 0x%lx", ret);
+	u64 ret = ((a << 56) |
+		   (b << 48) |
+		   (c << 40) |
+		   (d << 32) |
+		   (e << 24) |
+		   (f << 16) |
+		   (g << 8 ) |
+		   (h << 0 ));
 	return ret;
 }
 
@@ -249,15 +245,15 @@ stacum_step(Stacum_VM *vm) {
 		return 1;
 	} break;
 	case EXIT_GRACEFULLY : {
-		//assert(0 && "EXITED GRACEFULLY");
 		return 1;
 	} break;
 	case NOP : {
-		//assert(0 && "unimplemented");
 		// nothing
 	} break;
 	case PUSH : {
-		stacum_stack_push(vm, stacum_get_program_u64(vm));
+		u64 pushant = stacum_get_program_u64(vm);
+		printf("pushed %lx into the stack\n", pushant);
+		stacum_stack_push(vm, pushant);
 	} break;
 	case ADD : {
 		u64 a = stacum_stack_pop(vm);
@@ -358,7 +354,7 @@ stacum_step(Stacum_VM *vm) {
 	case MEMSET8 : {
 		u64 addr = stacum_stack_pop(vm);
 		u8 val  = stacum_stack_pop(vm);
-		vm->heap[addr] = val;
+		*(u8 *)(&(vm->heap)[addr]) = val;
 	} break;
 	case MEMGET16 : {
 		u64 addr = stacum_stack_pop(vm);
@@ -367,7 +363,7 @@ stacum_step(Stacum_VM *vm) {
 	case MEMSET16 : {
 		u64 addr = stacum_stack_pop(vm);
 		u16 val  = stacum_stack_pop(vm);
-		vm->heap[addr] = val;
+		*(u16 *)(&(vm->heap)[addr]) = val;
 	} break;
 	case MEMGET32 : {
 		u64 addr = stacum_stack_pop(vm);
@@ -376,7 +372,7 @@ stacum_step(Stacum_VM *vm) {
 	case MEMSET32 : {
 		u64 addr = stacum_stack_pop(vm);
 		u32 val  = stacum_stack_pop(vm);
-		vm->heap[addr] = val;
+		*(u32 *)(&(vm->heap)[addr]) = val;
 	} break;
 	case MEMGET64 : {
 		u64 addr = stacum_stack_pop(vm);
@@ -385,24 +381,85 @@ stacum_step(Stacum_VM *vm) {
 	case MEMSET64 : {
 		u64 addr = stacum_stack_pop(vm);
 		u64 val  = stacum_stack_pop(vm);
-		vm->heap[addr] = val;
+		*(u64 *)(&(vm->heap)[addr]) = val;
 	} break;
 	case SYSCALL : {
 		byte which = stacum_get_program_byte(vm);
-		if(which == 0) {
-			u64 nbyte  = stacum_stack_pop(vm);
-			u64 bufptr = stacum_stack_pop(vm);
-			u64 fildes = stacum_stack_pop(vm);
-			vm->stack[vm->sp++] =
-				write(fildes, &vm->heap[bufptr], nbyte);
+		if(which == 255) {
+			printf("%ld\n", stacum_stack_pop(vm));
+		} else if(which == 254) {
+			printf("got here\n");
+			printf("%s\n", (char *)&vm->heap[stacum_stack_pop(vm)]);
+		} else if(which == 0) {
+			//FILE *fp = (FILE *)stacum_stack_pop(vm);
+			//u64 nbyte  = stacum_stack_pop(vm);
+			//u64 bufptr = stacum_stack_pop(vm);
+			//vm->stack[vm->sp++] =
+			//	fwrite(&vm->heap[bufptr], nbyte, fp);
+			//size_t fwrite(const void ptr[restrict .size * .nmemb],
+			//	      size_t size, size_t nmemb,
+			//	      FILE *restrict stream);
 		} else if(which == 1) {
-			u64 nbyte  = stacum_stack_pop(vm);
-			u64 bufptr = stacum_stack_pop(vm);
-			u64 fildes = stacum_stack_pop(vm);
-			vm->stack[vm->sp++] =
-				read(fildes, &vm->heap[bufptr], nbyte);
-		} else if(which == 2) {
-			stacum_stack_push(vm, (u64)vm->heap);
+			//u64 nbyte  = stacum_stack_pop(vm);
+			//u64 bufptr = stacum_stack_pop(vm);
+			//u64 fildes = stacum_stack_pop(vm);
+			//vm->stack[vm->sp++] =
+			//	fread(fildes, &vm->heap[bufptr], nbyte);
+			//size_t fread(void ptr[restrict .size * .nmemb],
+			//	     size_t size, size_t nmemb,
+			//	     FILE *restrict stream);
+		} else if(which == 3) {
+			int flags = (int)stacum_stack_pop(vm);
+			char *filepath = (char *)stacum_stack_pop(vm);
+			void *handle = dlopen(filepath, flags);
+			stacum_stack_push(vm, (u64)handle);
+		} else if(which == 4) {
+			char *symbol_name = (char *)stacum_stack_pop(vm);
+			void *handle = (void *)stacum_stack_pop(vm);
+			dynamic_function function =
+				(dynamic_function)dlsym(handle, symbol_name);
+			stacum_stack_push(vm, (u64)function);
+		} else if(which == 5) {
+			dynamic_function function =
+				(dynamic_function)stacum_stack_pop(vm);
+			byte args = stacum_get_program_byte(vm);
+			switch(args) {
+			case 0: { stacum_stack_push(vm, function());
+			} break;
+			case 1: { stacum_stack_push(vm, 
+						    function(stacum_stack_pop(vm)));
+			} break;
+			case 2: { stacum_stack_push(vm, 
+						    function(stacum_stack_pop(vm),
+							     stacum_stack_pop(vm)));
+			} break;
+			case 3: { stacum_stack_push(vm, 
+						    function(stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm)));
+			} break;
+			case 4: { stacum_stack_push(vm, 
+						    function(stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm)));
+			} break;
+			case 5: { stacum_stack_push(vm, 
+						    function(stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm)));
+			} break;
+			case 6: { stacum_stack_push(vm, 
+						    function(stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm),
+							     stacum_stack_pop(vm)));
+			} break;
+			}
 		}
 	} break;
 	case JMP0 : {
@@ -491,21 +548,20 @@ make_stacum_write_prog_ctx() {
 	return ctx;
 }
 void
-stacum_write_prog_ctx_init (Stacum_Write_Prog_Ctx *ctx) {
+stacum_write_prog_ctx_init(Stacum_Write_Prog_Ctx *ctx) {
 	ctx->pc = 0;
 	ctx->lsp = 0;
 	ctx->lc = 0;
 }
-//void
-//free_stacum_write_prog_ctx() {
-//	free(ctx)
-//}
+void
+free_stacum_write_prog_ctx(Stacum_Write_Prog_Ctx *ctx) {
+	free(ctx)
+}
 
 void
 stacum_write_prog_ctx_add_buf(Stacum_Write_Prog_Ctx *ctx, u8 *buf, int size) {
 	assert(size < PROGRAM_SIZE);
 	for(int i = 0; i < size; i++) {
-		//printf("%x : %s %x\n", i, inst_string[buf[i]], buf[i]);
 		ctx->program[ctx->pc++] = buf[i];
 	}
 }
@@ -537,11 +593,6 @@ stacum_write_prog_ctx_put_jmp(Stacum_Write_Prog_Ctx *ctx, u64 label) {
 	ctx->program[ctx->pc++] = (label >> 0)  & 0xff;
 }
 
-//void
-//stacum_write_prog_ctx_set_jmp(Stacum_Write_Prog_Ctx *ctx) {
-//	return ctx->pc;
-//}
-
 void
 stacum_write_prog_ctx_add_u64(Stacum_Write_Prog_Ctx *ctx, u64 arg) {
 	ctx->program[ctx->pc++] = (arg >> 56) & 0xff;
@@ -564,7 +615,7 @@ void
 stacum_run(Stacum_VM *vm) {
 	while(stacum_step(vm) == 0) {
 	};
-	printf("\nExited Gracefully\n");
+	printf("[\n  Exited Gracefully\n]\n");
 }
 
 int
@@ -574,31 +625,12 @@ main(int argc, char **argv) {
 		return 1;
 	}
 	printf("argv[1] = %s\n", argv[1]);
-//	char *myprog = NULL;
-//	if(readwholefile(argv[1], &myprog)) {
-//		printf("FUCK\n");
-//		return 1;
-//	}
 
 	Stacum_VM vm;
 	stacum_init(&vm);
 
 	Stacum_Write_Prog_Ctx ctx;
 	stacum_write_prog_ctx_init(&ctx);
-
-	//stacum_write_prog_ctx_add_inst(&ctx, NOP);
-	//stacum_write_prog_ctx_add_inst(&ctx, PUSH);
-	//stacum_write_prog_ctx_add_u64(&ctx, 1);
-	//stacum_write_prog_ctx_add_inst(&ctx, JMP);
-	//stacum_write_prog_ctx_add_u64(&ctx, 0x1c);
-	//stacum_write_prog_ctx_add_inst(&ctx, PUSH);
-	//stacum_write_prog_ctx_add_u64(&ctx, 2);
-	//stacum_write_prog_ctx_add_inst(&ctx, PUSH);
-	//stacum_write_prog_ctx_add_u64(&ctx, 3);
-	//stacum_write_prog_ctx_add_inst(&ctx, EXIT_GRACEFULLY);
-
-	//stacum_write_prog_ctx_add_inst(&ctx, SYSCALL);
-	//stacum_write_prog_ctx_add_u8(&ctx, 1);
 
 	u8 *buf = NULL;
 	int buf_size = 0;
@@ -609,10 +641,6 @@ main(int argc, char **argv) {
 	stacum_write_prog_ctx_write(&ctx, &vm);
 
 	stacum_run(&vm);
-	for(int i = 0; i < vm.sp; i++ ) {
-		printf("%lx ", vm.stack[i]);
-	}
-	printf("\n");
 
 	return 0;
 }
