@@ -285,7 +285,6 @@ stacum_step(Stacum_VM *vm) {
 	} break;
 	case PUSH : {
 		u64 pushant = stacum_get_program_u64(vm);
-		printf("pushed %lx into the stack\n", pushant);
 		stacum_stack_push(vm, pushant);
 	} break;
 	case ADD : {
