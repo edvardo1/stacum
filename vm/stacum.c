@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <search.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
@@ -114,9 +115,9 @@ char *inst_string[] = {
 
 typedef u64 (*dynamic_function)();
 
-#define PROCEDURE_POINTERS_SIZE (1024)
+//#define PROCEDURE_POINTERS_SIZE (1024)
 #define CALL_STACK_SIZE (256)
-#define STACK_SIZE (256)
+#define STACK_SIZE (512)
 #define HEAP_SIZE (4096 * 8)
 typedef struct {
 	byte program[PROGRAM_SIZE];
@@ -124,21 +125,53 @@ typedef struct {
 	u8 *heap;
 
 	int pc; // program counter
-
 	int sp; // stack pointer
+
+	int stack_n;
+	int program_n;
 
 	int csp; // call stack pointer
 	u64 call_stack[CALL_STACK_SIZE];
+
+	bool program_loaded;
 } Stacum_VM;
+
+void
+stacum_load_program(Stacum_VM *vm,
+		    u8 *preloaded_program, int preloaded_program_length) {
+	assert(preloaded_program != NULL);
+	assert(preloaded_program_length < PROGRAM_SIZE);
+	memcpy(vm->program, preloaded_program, preloaded_program_length);
+
+	vm->program_loaded = true;
+}
+
+void
+stacum_load_stack(Stacum_VM *vm,
+		  u64 *preloaded_stack, int preloaded_stack_length) {
+	assert(preloaded_stack != NULL);
+	assert(preloaded_stack_length < STACK_SIZE);
+	memcpy(vm->stack, preloaded_stack, preloaded_stack_length);
+}
+void
+stacum_load_heap(Stacum_VM *vm,
+		 u8 *preloaded_heap, int preloaded_heap_length) {
+	assert(preloaded_heap != NULL);
+	assert(preloaded_heap_length < HEAP_SIZE);
+	memcpy(vm->heap, preloaded_heap, preloaded_heap_length);
+}
+
 
 void
 stacum_init(Stacum_VM *vm) {
 	for(int i = 0; i < PROGRAM_SIZE; i++) {
 		vm->program[i] = 0;
 	}
+
 	for(int i = 0; i < STACK_SIZE; i++) {
 		vm->stack[i] = 0;
 	}
+
 	for(int i = 0; i < CALL_STACK_SIZE; i++) {
 		vm->call_stack[i] = 0;
 	}
@@ -149,6 +182,7 @@ stacum_init(Stacum_VM *vm) {
 	vm->pc = 0;
 	vm->sp = 0;
 	vm->csp = 0;
+	vm->program_loaded = false;
 }
 
 int
