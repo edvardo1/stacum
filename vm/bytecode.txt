@@ -1,0 +1,32 @@
+bytecode for the stacum vm, when stored in a file, will have the the .stc extension.
+
+the format contains a data segment (reserved for memory allocated "statically" (actually allocated in the heap by the vm)), and a code segment, reserved for the program, and, optionally, a preloaded stack
+
+the file will be composed of
+three bytes composing the ascii string 'STC'
+- data segment:
+  - dl length of the data segment in bytes (32 bits)
+  - data that might be preinitialized, of length dl
+- code segment:
+  - cl length of the code segment in bytes (32 bits)
+  - program of length cl
+- stack segment:
+  - sl length of the stack segment in quad-words (8 bytes) (the length does __not__ correspond to the size of the stack in the vm, but rather, the length of the data that is initialized, the stack pointer will be initialized to the end automatically.)
+  - stack of length sl
+
+in a table:
++--------------+--------+ 
+| STC          | 3      |
++--------------+--------+
+| data length  | 4      |
++--------------+--------+
+| data         | dl     |
++--------------+--------+
+| code length  | 4      |
++--------------+--------+
+| code         | cl     |
++--------------+--------+
+| stack length | sl     |
++--------------+--------+
+| stack        | sl * 8 |
++--------------+--------+
