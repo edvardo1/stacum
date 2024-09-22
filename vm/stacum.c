@@ -532,84 +532,6 @@ stacum_step(Stacum_VM *vm) {
 	return 0;
 }
 
-#define LABELS_N 1000
-typedef struct {
-	byte program[PROGRAM_SIZE];
-	int pc;
-	u64 labels[LABELS_N];
-	int lsp;
-	int lc;
-} Stacum_Write_Prog_Ctx;
-
-Stacum_Write_Prog_Ctx *
-make_stacum_write_prog_ctx() {
-	Stacum_Write_Prog_Ctx *ctx = calloc(1, sizeof(Stacum_Write_Prog_Ctx));
-	assert(ctx != NULL);
-	return ctx;
-}
-void
-stacum_write_prog_ctx_init(Stacum_Write_Prog_Ctx *ctx) {
-	ctx->pc = 0;
-	ctx->lsp = 0;
-	ctx->lc = 0;
-}
-void
-free_stacum_write_prog_ctx(Stacum_Write_Prog_Ctx *ctx) {
-	free(ctx)
-}
-
-void
-stacum_write_prog_ctx_add_buf(Stacum_Write_Prog_Ctx *ctx, u8 *buf, int size) {
-	assert(size < PROGRAM_SIZE);
-	for(int i = 0; i < size; i++) {
-		ctx->program[ctx->pc++] = buf[i];
-	}
-}
-
-void
-stacum_write_prog_ctx_add_inst(Stacum_Write_Prog_Ctx *ctx, INST inst) {
-	ctx->program[ctx->pc++] = inst;
-}
-void
-stacum_write_prog_ctx_add_u8(Stacum_Write_Prog_Ctx *ctx, u8 arg) {
-	ctx->program[ctx->pc++] = arg;
-}
-
-u64
-stacum_write_prog_ctx_set_label(Stacum_Write_Prog_Ctx *ctx) {
-	ctx->pc += 4;
-	return ctx->pc - 4;
-}
-
-void
-stacum_write_prog_ctx_put_jmp(Stacum_Write_Prog_Ctx *ctx, u64 label) {
-	ctx->program[ctx->pc++] = (label >> 56) & 0xff;
-	ctx->program[ctx->pc++] = (label >> 48) & 0xff;
-	ctx->program[ctx->pc++] = (label >> 40) & 0xff;
-	ctx->program[ctx->pc++] = (label >> 32) & 0xff;
-	ctx->program[ctx->pc++] = (label >> 24) & 0xff;
-	ctx->program[ctx->pc++] = (label >> 16) & 0xff;
-	ctx->program[ctx->pc++] = (label >> 8)  & 0xff;
-	ctx->program[ctx->pc++] = (label >> 0)  & 0xff;
-}
-
-void
-stacum_write_prog_ctx_add_u64(Stacum_Write_Prog_Ctx *ctx, u64 arg) {
-	ctx->program[ctx->pc++] = (arg >> 56) & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 48) & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 40) & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 32) & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 24) & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 16) & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 8)  & 0xff;
-	ctx->program[ctx->pc++] = (arg >> 0)  & 0xff;
-}
-void
-stacum_write_prog_ctx_write(Stacum_Write_Prog_Ctx *ctx, Stacum_VM *vm) {
-	for(int i = 0; i < ctx->pc; i++) {
-		vm->program[i] = ctx->program[i];
-	}
-}
 
 void
 stacum_run(Stacum_VM *vm) {
@@ -629,16 +551,10 @@ main(int argc, char **argv) {
 	Stacum_VM vm;
 	stacum_init(&vm);
 
-	Stacum_Write_Prog_Ctx ctx;
-	stacum_write_prog_ctx_init(&ctx);
-
 	u8 *buf = NULL;
 	int buf_size = 0;
 	readwholefile(argv[1], &buf, &buf_size);
 	assert(buf != NULL && buf_size != 0);
-
-	stacum_write_prog_ctx_add_buf(&ctx, buf, buf_size);
-	stacum_write_prog_ctx_write(&ctx, &vm);
 
 	stacum_run(&vm);
 
