@@ -10,6 +10,7 @@
 
 #include "../common/util.h"
 #include "../common/insts.h"
+#include "../common/stacum_format.h"
 
 #define PROGRAM_SIZE 32000
 
@@ -83,6 +84,19 @@ stacum_init(Stacum_VM *vm) {
 	vm->sp = 0;
 	vm->csp = 0;
 	vm->program_loaded = false;
+}
+
+void
+stacum_read_from_format(Stacum_VM *vm, stacum_format *format) {
+	if(format->data) {
+		stacum_load_heap(vm, format->data, format->data_n);
+	}
+	if(format->code) {
+		stacum_load_program(vm, format->code, format->code_n);
+	}
+	if(format->stack) {
+		stacum_load_stack(vm, format->stack, format->stack_n);
+	}
 }
 
 INST
@@ -414,54 +428,6 @@ stacum_run(Stacum_VM *vm) {
 	while(stacum_step(vm) == 0) {
 	};
 	printf("[\n  Exited Gracefully\n]\n");
-}
-
-typedef struct {
-	byte *data; u32 data_n;
-	byte *code; u32 code_n;
-	u64 *stack; u32 stack_n;
-} stacum_format;
-
-int
-stacum_format_read_from_buffer(stacum_format *format, sized_u8_buffer *buf) {
-	assert(sized_u8_buffer_get_next_u8(buf) == 'S');
-	assert(sized_u8_buffer_get_next_u8(buf) == 'T');
-	assert(sized_u8_buffer_get_next_u8(buf) == 'C');
-
-	format->data_n = sized_u8_buffer_get_next_u32(buf);
-	if(format->data_n > 0) {
-		format->data = sized_u8_buffer_get_next_u8_ref(buf);
-		sized_u8_buffer_skip_n_bytes(buf, format->data_n - 1);
-	}
-
-	format->code_n = sized_u8_buffer_get_next_u32(buf);
-	if(format->code_n > 0) {
-		format->code = sized_u8_buffer_get_next_u8_ref(buf);
-		sized_u8_buffer_skip_n_bytes(buf, format->code_n - 1);
-	}
-
-	format->stack_n = sized_u8_buffer_get_next_u32(buf);
-	if(format->stack_n > 0) {
-		format->stack = sized_u8_buffer_get_next_u64_ref(buf);
-		sized_u8_buffer_skip_n_bytes(buf, (format->stack_n - 1) * sizeof(u64));
-	}
-
-	assert(sized_u8_buffer_at_end(buf));
-
-	return 0;
-}
-
-void
-stacum_read_from_format(Stacum_VM *vm, stacum_format *format) {
-	if(format->data) {
-		stacum_load_heap(vm, format->data, format->data_n);
-	}
-	if(format->code) {
-		stacum_load_program(vm, format->code, format->code_n);
-	}
-	if(format->stack) {
-		stacum_load_stack(vm, format->stack, format->stack_n);
-	}
 }
 
 int
