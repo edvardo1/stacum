@@ -8,13 +8,10 @@
 #include <assert.h>
 #include <dlfcn.h>
 
-typedef uint8_t byte;
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
+#include "../common/util.h"
 
 #define PROGRAM_SIZE 32000
+
 typedef enum {
 	EXIT0,
 	EXIT_GRACEFULLY,
@@ -183,65 +180,6 @@ stacum_init(Stacum_VM *vm) {
 	vm->sp = 0;
 	vm->csp = 0;
 	vm->program_loaded = false;
-}
-
-int
-readwholefile(char *filepath, u8 **output, int *out_size) {
-	FILE *fp = fopen(filepath, "r");
-
-	if(fp == NULL) {
-		goto error;
-	}
-
-	if(fseek(fp, 0, SEEK_END)) {
-		goto error;
-	}
-
-	long size = ftell(fp);
-
-	*output = malloc(size + 1);
-
-	if(*output == NULL) {
-		printf("buy more ram\n");
-		goto error;
-	}
-
-	if(fseek(fp, 0, SEEK_SET)) {
-		goto error;
-	}
-
-	long out = fread(*output, 1, size, fp);
-	if(out != size) {
-		goto error;
-	}
-
-	*out_size = out;
-
-	fclose(fp);
-
-	return 0;
-error:
-	if(fp != NULL) {
-		fclose(fp);
-	}
-
-	if(*output != NULL) {
-		free(*output);
-	}
-
-	return 1;
-}
-
-u32
-u8_buf_get_u32(u8 *buf, int index) {
-	u32 ret = ((u32*)(&buf[index]))[0];
-	return ret;
-}
-
-u64
-u8_buf_get_u64(u8 *buf, int index) {
-	u64 ret = ((u64*)(&buf[index]))[0];
-	return ret;
 }
 
 INST
@@ -580,62 +518,6 @@ typedef struct {
 	byte *code; u32 code_n;
 	u64 *stack; u32 stack_n;
 } stacum_format;
-
-typedef struct {
-	u8 *buf;
-	u32 size;
-	u32 index;
-} sized_u8_buffer;
-
-void
-init_sized_u8_buffer(sized_u8_buffer *sbuf, u8 *buf, u32 size, u32 index) {
-	sbuf->buf = buf;
-	sbuf->size = size;
-	sbuf->index = index;
-}
-
-u8
-sized_u8_buffer_get_next_u8(sized_u8_buffer *buf) {
-	assert(buf->index < buf->size);
-	u8 ret = buf->buf[buf->index];
-	buf->index += sizeof(u8);
-	return ret;
-}
-
-u8 *
-sized_u8_buffer_get_next_u8_ref(sized_u8_buffer *buf) {
-	assert(buf->index < buf->size);
-	u8 *ret = &buf->buf[buf->index];
-	buf->index += sizeof(u8);
-	return ret;
-}
-
-u64 *
-sized_u8_buffer_get_next_u64_ref(sized_u8_buffer *buf) {
-	assert(buf->index < buf->size);
-	u64 *ret = (u64 *)&buf->buf[buf->index];
-	buf->index += sizeof(u64);
-	return ret;
-}
-
-u32
-sized_u8_buffer_get_next_u32(sized_u8_buffer *buf) {
-	assert(buf->index + sizeof(u32) - 1 < buf->size);
-	u32 ret = u8_buf_get_u32(buf->buf, buf->index);
-	buf->index += sizeof(u32);
-	return ret;
-}
-
-void
-sized_u8_buffer_skip_n_bytes(sized_u8_buffer *buf, u32 n) {
-	assert(buf->index + n <= buf->size);
-	buf->index += n;
-}
-
-u32
-sized_u8_buffer_at_end(sized_u8_buffer *buf) {
-	return buf->size == buf->index;
-}
 
 int
 stacum_format_read_from_buffer(stacum_format *format, sized_u8_buffer *buf) {
