@@ -198,33 +198,32 @@ error:
 	return 1;
 }
 
+u32
+u8_buf_get_u32(u8 *buf, int index) {
+	u32 ret = ((u32*)(&buf[index]))[0];
+	return ret;
+}
+
+u64
+u8_buf_get_u64(u8 *buf, int index) {
+	u64 ret = ((u64*)(&buf[index]))[0];
+	return ret;
+}
+
 INST
 stacum_get_program_inst(Stacum_VM *vm) {
 	return (INST)vm->program[vm->pc++];
 }
+
 byte
 stacum_get_program_byte(Stacum_VM *vm) {
 	return vm->program[vm->pc++];
 }
+
 u64
 stacum_get_program_u64(Stacum_VM *vm) {
-	u64 a = stacum_get_program_byte(vm);
-	u64 b = stacum_get_program_byte(vm);
-	u64 c = stacum_get_program_byte(vm);
-	u64 d = stacum_get_program_byte(vm);
-	u64 e = stacum_get_program_byte(vm);
-	u64 f = stacum_get_program_byte(vm);
-	u64 g = stacum_get_program_byte(vm);
-	u64 h = stacum_get_program_byte(vm);
-
-	u64 ret = ((a << 56) |
-		   (b << 48) |
-		   (c << 40) |
-		   (d << 32) |
-		   (e << 24) |
-		   (f << 16) |
-		   (g << 8 ) |
-		   (h << 0 ));
+	u64 ret = u8_buf_get_u64(vm->program, vm->pc);
+	vm->pc += sizeof(u64) / sizeof(byte);
 	return ret;
 }
 
