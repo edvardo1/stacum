@@ -1,10 +1,12 @@
 CC=gcc
-CFLAGS= -Wall -Wextra -O1 #`pkg-config --cflags --libs sdl2 SDL2_gfx`
-DEPS= 
-OBJ = stacum.o
+CFLAGS= -Wall -Wextra -O1
+OBJ = stacum.o util.o
+
+stacum: $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ 
 
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-stacum: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ 
+util.o: ../common/util.c
+	$(CC) $(CFLAGS) -c -o $@ $<
