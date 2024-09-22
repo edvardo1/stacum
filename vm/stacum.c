@@ -564,12 +564,119 @@ stacum_step(Stacum_VM *vm) {
 	return 0;
 }
 
-
 void
 stacum_run(Stacum_VM *vm) {
+	if(!vm->program_loaded) {
+		return;
+	}
+
 	while(stacum_step(vm) == 0) {
 	};
 	printf("[\n  Exited Gracefully\n]\n");
+}
+
+typedef struct {
+	byte *data; u32 data_n;
+	byte *code; u32 code_n;
+	u64 *stack; u32 stack_n;
+} stacum_format;
+
+typedef struct {
+	u8 *buf;
+	u32 size;
+	u32 index;
+} sized_u8_buffer;
+
+void
+init_sized_u8_buffer(sized_u8_buffer *sbuf, u8 *buf, u32 size, u32 index) {
+	sbuf->buf = buf;
+	sbuf->size = size;
+	sbuf->index = index;
+}
+
+u8
+sized_u8_buffer_get_next_u8(sized_u8_buffer *buf) {
+	assert(buf->index < buf->size);
+	u8 ret = buf->buf[buf->index];
+	buf->index += sizeof(u8);
+	return ret;
+}
+
+u8 *
+sized_u8_buffer_get_next_u8_ref(sized_u8_buffer *buf) {
+	assert(buf->index < buf->size);
+	u8 *ret = &buf->buf[buf->index];
+	buf->index += sizeof(u8);
+	return ret;
+}
+
+u64 *
+sized_u8_buffer_get_next_u64_ref(sized_u8_buffer *buf) {
+	assert(buf->index < buf->size);
+	u64 *ret = (u64 *)&buf->buf[buf->index];
+	buf->index += sizeof(u64);
+	return ret;
+}
+
+u32
+sized_u8_buffer_get_next_u32(sized_u8_buffer *buf) {
+	assert(buf->index + sizeof(u32) - 1 < buf->size);
+	u32 ret = u8_buf_get_u32(buf->buf, buf->index);
+	buf->index += sizeof(u32);
+	return ret;
+}
+
+void
+sized_u8_buffer_skip_n_bytes(sized_u8_buffer *buf, u32 n) {
+	assert(buf->index + n <= buf->size);
+	buf->index += n;
+}
+
+u32
+sized_u8_buffer_at_end(sized_u8_buffer *buf) {
+	return buf->size == buf->index;
+}
+
+int
+stacum_format_read_from_buffer(stacum_format *format, sized_u8_buffer *buf) {
+	assert(sized_u8_buffer_get_next_u8(buf) == 'S');
+	assert(sized_u8_buffer_get_next_u8(buf) == 'T');
+	assert(sized_u8_buffer_get_next_u8(buf) == 'C');
+
+	format->data_n = sized_u8_buffer_get_next_u32(buf);
+	if(format->data_n > 0) {
+		format->data = sized_u8_buffer_get_next_u8_ref(buf);
+		sized_u8_buffer_skip_n_bytes(buf, format->data_n - 1);
+	}
+
+	format->code_n = sized_u8_buffer_get_next_u32(buf);
+	if(format->code_n > 0) {
+		format->code = sized_u8_buffer_get_next_u8_ref(buf);
+		sized_u8_buffer_skip_n_bytes(buf, format->code_n - 1);
+	}
+
+	format->stack_n = sized_u8_buffer_get_next_u32(buf);
+	if(format->stack_n > 0) {
+		format->stack = sized_u8_buffer_get_next_u64_ref(buf);
+		sized_u8_buffer_skip_n_bytes(buf, (format->stack_n - 1) * sizeof(u64));
+	}
+
+	assert(sized_u8_buffer_at_end(buf));
+
+	return 0;
+}
+
+void
+stacum_read_from_format(Stacum_VM *vm, stacum_format *format) {
+	if(format->data) {
+		stacum_load_heap(vm, format->data, format->data_n);
+	}
+	if(format->code) {
+		stacum_load_program(vm, format->code, format->code_n);
+	}
+	if(format->stack) {
+		stacum_load_stack(vm, format->stack, format->stack_n);
+	}
 }
 
 int
@@ -587,6 +694,14 @@ main(int argc, char **argv) {
 	int buf_size = 0;
 	readwholefile(argv[1], &buf, &buf_size);
 	assert(buf != NULL && buf_size != 0);
+
+	sized_u8_buffer sbuf;
+	init_sized_u8_buffer(&sbuf, buf, buf_size, 0);
+
+	stacum_format format;
+	stacum_format_read_from_buffer(&format, &sbuf);
+
+	stacum_read_from_format(&vm, &format);
 
 	stacum_run(&vm);
 
