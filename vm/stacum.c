@@ -120,6 +120,7 @@ u64
 stacum_stack_pop(Stacum_VM *vm) {
 	return vm->stack[--vm->sp];
 }
+
 void
 stacum_stack_push(Stacum_VM *vm, u64 what) {
 	vm->stack[vm->sp++] = what;
@@ -127,6 +128,7 @@ stacum_stack_push(Stacum_VM *vm, u64 what) {
 
 int
 stacum_step(Stacum_VM *vm) {
+	/* TODO: make stack based operations more efficient */
 	switch(stacum_get_program_inst(vm)) {
 	case EXIT0 : {
 		assert(0 && "EXITED UNSUCCESSFULLY");
@@ -141,6 +143,29 @@ stacum_step(Stacum_VM *vm) {
 	case PUSH : {
 		u64 pushant = stacum_get_program_u64(vm);
 		stacum_stack_push(vm, pushant);
+	} break;
+	case DROP : {
+		(void)stacum_stack_pop(vm);
+	} break;
+	case DUP : {
+		u64 pushant = stacum_stack_pop(vm);
+		stacum_stack_push(vm, pushant);
+		stacum_stack_push(vm, pushant);
+	} break;
+	case ROT : { /* a b c - b c a (rotates left)*/
+		u64 c = stacum_stack_pop(vm);
+		u64 b = stacum_stack_pop(vm);
+		u64 a = stacum_stack_pop(vm);
+		stacum_stack_push(vm, b);
+		stacum_stack_push(vm, c);
+		stacum_stack_push(vm, a);
+	} break;
+	case OVER : { /* a b -- a b a */
+		u64 b = stacum_stack_pop(vm);
+		u64 a = stacum_stack_pop(vm);
+		stacum_stack_push(vm, a);
+		stacum_stack_push(vm, b);
+		stacum_stack_push(vm, a);
 	} break;
 	case ADD : {
 		u64 a = stacum_stack_pop(vm);
