@@ -4,61 +4,8 @@
 #include <assert.h>
 #include <stdint.h>
 
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
-typedef uint8_t byte;
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-int
-readwholefile(char *filepath, char **output) {
-	FILE *fp = fopen(filepath, "r");
-
-	if(fp == NULL) {
-		goto error;
-	}
-
-	if(fseek(fp, 0, SEEK_END)) {
-		goto error;
-	}
-
-	long size = ftell(fp);
-
-	*output = malloc(size + 1);
-
-	if(*output == NULL) {
-		printf("buy more ram\n");
-		goto error;
-	}
-
-	if(fseek(fp, 0, SEEK_SET)) {
-		goto error;
-	}
-
-	long out = fread(*output, 1, size, fp);
-	if(out != size) {
-		goto error;
-	}
-
-	fclose(fp);
-
-	return 0;
-error:
-	if(fp != NULL) {
-		fclose(fp);
-	}
-
-	if(*output != NULL) {
-		free(*output);
-	}
-
-	return 1;
-}
+#include "../common/util.h"
+#include "../common/insts.h"
 
 typedef enum {
 	NUMBER,
@@ -299,104 +246,6 @@ assembler_init(Assembler *ass, Token *tokens, int tokens_n) {
 	ass->tokens_c = 0;
 }
 
-typedef enum {
-	EXIT0,
-	EXIT_GRACEFULLY,
-	NOP,
-	PUSH,
-	ADD,
-	SUB,
-	MUL,
-	DIV,
-	MOD,
-        AND,
-        BWAND,
-        OR,
-        BWOR,
-        NOT,
-        BWNOT,
-	XOR,
-	BWXOR,
-	NOR,
-	BWNOR,
-	XNOR,
-	BWXNOR,
-	STACKALLOC,
-	ALLOC,
-	FREE,
-	MEMGET8,
-	MEMSET8,
-	MEMGET16,
-	MEMSET16,
-	MEMGET32,
-	MEMSET32,
-	MEMGET64,
-	MEMSET64,
-	SYSCALL,
-	JMP0,
-	CALL0,
-	JMP1,
-	CALL1,
-	JMP,
-	CALL,
-	RET,
-	EQU,
-	NEQ,
-	LST,
-	GRT,
-	LEQ,
-	GEQ
-} INST;
-
-char *inst_string[] = {
-	[EXIT0]           = "exit0",
-	[EXIT_GRACEFULLY] = "exit_gracefully",
-	[NOP]             = "nop",
-	[PUSH]            = "push",
-	[ADD]             = "add",
-	[SUB]             = "sub",
-	[MUL]             = "mul",
-	[DIV]             = "div",
-	[MOD]             = "mod",
-        [AND]             = "and",
-        [BWAND]           = "bwand",
-        [OR]              = "or",
-        [BWOR]            = "bwor",
-        [NOT]             = "not",
-        [BWNOT]           = "bwnot",
-	[XOR]             = "xor",
-	[BWXOR]           = "bwxor",
-	[NOR]             = "nor",
-	[BWNOR]           = "bwnor",
-	[XNOR]            = "xnor",
-	[BWXNOR]          = "bwxnor",
-	[STACKALLOC     ] = "stackalloc",
-	[ALLOC]           = "alloc",
-	[FREE]            = "free",
-	[MEMGET8]         = "memget8",
-	[MEMSET8]         = "memset8",
-	[MEMGET16]        = "memget16",
-	[MEMSET16]        = "memset16",
-	[MEMGET32]        = "memget32",
-	[MEMSET32]        = "memset32",
-	[MEMGET64]        = "memget64",
-	[MEMSET64]        = "memset64",
-	[SYSCALL]         = "syscall",
-	[JMP0]            = "jmp0",
-	[CALL0]           = "call0",
-	[JMP1]            = "jmp1",
-	[CALL1]           = "call1",
-	[JMP]             = "jmp",
-	[CALL]            = "call",
-	[RET]             = "ret",
-	[EQU]             = "equ",
-	[NEQ]             = "neq",
-	[LST]             = "lst",
-	[GRT]             = "grt",
-	[LEQ]             = "leq",
-	[GEQ]             = "geq"
-};
-
 int
 token_is_number(Token *token) {
 	return 1;
@@ -549,7 +398,7 @@ main(int argc, char **argv) {
 	lexer_init(&lexer);
 
 	char *program;
-	readwholefile(argv[1], &program);
+	readwholefile(argv[1], (u8 **)&program, NULL);
 	assert(program != NULL);
 
 	lexer_copy_string(&lexer, program);
