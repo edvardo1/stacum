@@ -262,13 +262,14 @@ string_equals(char *str1, char *str2, int len1, int len2) {
 	if(len1 != len2) {
 		return 0;
 	}
-	return strncmp(str1, str2, len1) == 0;
+	return strncmp(str1, str2, MIN(len1, len2)) == 0;
 }
 
 int
 is_instruction(Token *token, u8 *n) {
 	for(int i = 0; i < sizeof(inst_string) / sizeof(inst_string[0]); i++) {
-		if(strncmp(token->str, inst_string[i], strlen(inst_string[i])) == 0) {
+		if(string_equals(token->str, inst_string[i],
+				 token->len, strlen(inst_string[i])) == 0) {
 			if(n != NULL) {
 				*n = i;
 			}

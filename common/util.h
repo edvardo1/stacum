@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define MAX(a, b) (a > b) ? (a) : (b)
+#define MIN(a, b) (a < b) ? (a) : (b)
+
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
