@@ -312,14 +312,14 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 		char *name;
 	        int bytesize;
 	} type_array[] = {
-		{"I8", 1},
-		{"I16", 2},
-		{"I32", 4},
-		{"I64", 8},
-		{"U8", 1},
-		{"U16", 2},
-		{"U32", 4},
-		{"U64", 8}
+		{"I8",  sizeof(i8)},
+		{"I16", sizeof(i16)},
+		{"I32", sizeof(i32)},
+		{"I64", sizeof(i64)},
+		{"U8",  sizeof(u8)},
+		{"U16", sizeof(u16)},
+		{"U32", sizeof(u32)},
+		{"U64", sizeof(u64)}
 	};
 	int next_size = 0;
 
@@ -337,15 +337,8 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 
 		for(int i = 0; i < ass->labels_c; i++) {
 			if(strncmp(t->str, ass->labels[i].str, t->len) == 0) {
-				buf[buf_index++] = (ass->labels[i].pos >> 56) & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 48) & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 40) & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 32) & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 24) & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 16) & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 8)  & 0xff;
-				buf[buf_index++] = (ass->labels[i].pos >> 0)  & 0xff;
-
+				((u64 *)(&buf[buf_index]))[0] = ass->labels[i].pos;
+				buf_index += sizeof(u64);
 				t = assembler_token_get(ass);
 				continue;
 			}
@@ -366,11 +359,28 @@ assembler_assemble(Assembler *ass, u8 **output, int *output_size) {
 			next_size = type_array[i].bytesize;
 		} else if(token_is_number(t)) {
 			u64 num = token_get_number(t);
-			if(next_size == 0) {
-				next_size = 8;
-			}
-			for(int i = next_size - 1; i >= 0; i--) {
-				buf[buf_index++] = (num >> (next_size * i)) & 0xff;
+
+			switch(next_size) {
+			case sizeof(u8): {
+				((u8 *)&buf[buf_index])[0] = num;
+				buf_index += sizeof(u8);
+			} break;
+			case sizeof(u16): {
+				((u16 *)&buf[buf_index])[0] = num;
+				buf_index += sizeof(u16);
+			} break;
+			case sizeof(u32): {
+				((u32 *)&buf[buf_index])[0] = num;
+				buf_index += sizeof(u32);
+			} break;
+			case 0: /* fallthrough */
+			case sizeof(u64): {
+				((u64 *)&buf[buf_index])[0] = num;
+				buf_index += sizeof(u64);
+			} break;
+			default: {
+				abort();
+			} break;
 			}
 
 			next_size = 0;
