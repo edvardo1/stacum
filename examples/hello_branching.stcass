@@ -1,0 +1,70 @@
+%macrodef exit0 &u8 0 %macroend
+%macrodef exit_gracefully &u8 1 %macroend
+%macrodef nop &u8 2 %macroend
+%macrodef push &u8 3 &u64 %macroend
+%macrodef drop &u8 4 %macroend
+%macrodef dup &u8 5 %macroend
+%macrodef rot &u8 6 %macroend
+%macrodef over &u8 7 %macroend
+%macrodef add &u8 8 %macroend
+%macrodef sub &u8 9 %macroend
+%macrodef mul &u8 10 %macroend
+%macrodef div &u8 11 %macroend
+%macrodef mod &u8 12 %macroend
+%macrodef and &u8 13 %macroend
+%macrodef bwand &u8 14 %macroend
+%macrodef or &u8 15 %macroend
+%macrodef bwor &u8 16 %macroend
+%macrodef not &u8 17 %macroend
+%macrodef bwnot &u8 18 %macroend
+%macrodef xor &u8 19 %macroend
+%macrodef bwxor &u8 20 %macroend
+%macrodef nor &u8 21 %macroend
+%macrodef bwnor &u8 22 %macroend
+%macrodef xnor &u8 23 %macroend
+%macrodef bwxnor &u8 24 %macroend
+%macrodef stackalloc &u8 25 %macroend
+%macrodef alloc &u8 26 %macroend
+%macrodef free &u8 27 %macroend
+%macrodef memget8 &u8 28 %macroend
+%macrodef memset8 &u8 29 %macroend
+%macrodef memget16 &u8 30 %macroend
+%macrodef memset16 &u8 31 %macroend
+%macrodef memget32 &u8 32 %macroend
+%macrodef memset32 &u8 33 %macroend
+%macrodef memget64 &u8 34 %macroend
+%macrodef memset64 &u8 35 %macroend
+%macrodef syscall &u8 36 &u8 %macroend
+%macrodef jmp0 &u8 37 &u64 %macroend
+%macrodef call0 &u8 38 &u64 %macroend
+%macrodef jmp1 &u8 39 &u64 %macroend
+%macrodef call1 &u8 40 &u64 %macroend
+%macrodef jmp &u8 41 &u64 %macroend
+%macrodef call &u8 42 &u64 %macroend
+%macrodef ret &u8 43 %macroend
+%macrodef equ &u8 44 %macroend
+%macrodef neq &u8 45 %macroend
+%macrodef lst &u8 46 %macroend
+%macrodef grt &u8 47 %macroend
+%macrodef leq &u8 48 %macroend
+%macrodef geq &u8 49 %macroend
+
+segment data
+	msg: &u8 "Hello, World!" 0
+	msgg: &u8 "Bye Bye" 0
+	msggg: &u8 "This will be skipped" 0
+segment code
+	push msg
+	syscall 254
+
+	jmp skip
+
+	push msggg
+	syscall 254
+skip:
+
+	push msggg
+	syscall 254
+
+	exit_gracefully
+segment stack
