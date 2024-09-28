@@ -50,20 +50,20 @@
 %macrodef geq &u8 49 %macroend
 
 segment data
-	msg: &u8 "Hello, World!" 0
-	msgg: &u8 "Bye Bye" 0
-	msggg: &u8 "This will be skipped" 0
+	msg_1: &u8 "Hello, World!" 0
+	msg_2: &u8 "This will be skipped" 0
+	msg_3: &u8 "Bye Bye" 0
 segment code
-	push msg
+	push msg_1
 	syscall 254
-
 	jmp skip
 
-	push msggg
-	syscall 254
-skip:
 
-	push msggg
+	push msg_2
+	syscall 254
+
+skip:
+	push msg_3
 	syscall 254
 
 	exit_gracefully
