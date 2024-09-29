@@ -24,6 +24,7 @@ typedef struct {
 } sized_u8_buffer;
 
 int readwholefile(char *filepath, u8 **output, int *out_size);
+u16 u8_buf_get_u16(u8 *buf, int index);
 u32 u8_buf_get_u32(u8 *buf, int index);
 u64 u8_buf_get_u64(u8 *buf, int index);
 

@@ -51,6 +51,12 @@ error:
 	return 1;
 }
 
+u16
+u8_buf_get_u16(u8 *buf, int index) {
+	u16 ret = ((u16*)(&buf[index]))[0];
+	return ret;
+}
+
 u32
 u8_buf_get_u32(u8 *buf, int index) {
 	u32 ret = ((u32*)(&buf[index]))[0];
