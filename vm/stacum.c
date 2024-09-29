@@ -109,6 +109,13 @@ stacum_get_program_byte(Stacum_VM *vm) {
 	return vm->program[vm->pc++];
 }
 
+u16
+stacum_get_program_u16(Stacum_VM *vm) {
+	u16 ret = u8_buf_get_u16(vm->program, vm->pc);
+	vm->pc += sizeof(u16) / sizeof(byte);
+	return ret;
+}
+
 u64
 stacum_get_program_u64(Stacum_VM *vm) {
 	u64 ret = u8_buf_get_u64(vm->program, vm->pc);
@@ -128,8 +135,12 @@ stacum_stack_push(Stacum_VM *vm, u64 what) {
 
 int
 stacum_step(Stacum_VM *vm) {
+	INST inst = stacum_get_program_inst(vm);
+
+	printf("inst: '%s'\n", inst_string[inst]);
+
 	/* TODO: make stack based operations more efficient */
-	switch(stacum_get_program_inst(vm)) {
+	switch(inst) {
 	case EXIT0 : {
 		assert(0 && "EXITED UNSUCCESSFULLY");
 		return 1;
@@ -296,45 +307,75 @@ stacum_step(Stacum_VM *vm) {
 		*(u64 *)(&(vm->heap)[addr]) = val;
 	} break;
 	case SYSCALL : {
-		byte which = stacum_get_program_byte(vm);
-		if(which == 255) {
+		byte which = stacum_get_program_u16(vm);
+		switch(which) {
+		case 0 : {
+			FILE     *fp = (FILE *)stacum_stack_pop(vm);
+			size_t nmemb = (size_t)stacum_stack_pop(vm);
+			size_t  size = (size_t)stacum_stack_pop(vm);
+
+			u64 index = stacum_stack_pop(vm);
+			u8 *place = &(vm->heap[index]);
+			void *bufptr = place;
+
+			vm->stack[vm->sp++] =
+				fread(bufptr, size, nmemb, fp);
+		} break;
+		case 1 : {
+			FILE     *fp = (FILE *)stacum_stack_pop(vm);
+			size_t nmemb = (size_t)stacum_stack_pop(vm);
+			size_t  size = (size_t)stacum_stack_pop(vm);
+
+			u64 index = stacum_stack_pop(vm);
+			u8 *place = &(vm->heap[index]);
+			void *bufptr = place;
+
+			vm->stack[vm->sp++] =
+				fwrite(bufptr, size, nmemb, fp);
+		} break;
+		case 2 : {
+			char *mode = (char *)stacum_stack_pop(vm);
+			char *name = (char *)stacum_stack_pop(vm);
+			vm->stack[vm->sp++] = (u64)fopen(name, mode);
+		} break;
+		case 3 : {
+		        FILE *stream = (FILE *)stacum_stack_pop(vm);
+			vm->stack[vm->sp++] = (u64)fclose(stream);
+		} break;
+		case 4 : {
+			vm->stack[vm->sp++] = (u64)stdin;
+		} break;
+		case 5 : {
+			vm->stack[vm->sp++] = (u64)stdout;
+		} break;
+		case 6 : {
+			vm->stack[vm->sp++] = (u64)stderr;
+		} break;
+
+		case 255 : {
 			printf("%ld\n", stacum_stack_pop(vm));
-		} else if(which == 254) {
-			printf("got here\n");
+		} break;
+		case 254 : {
 			printf("%s\n", (char *)&vm->heap[stacum_stack_pop(vm)]);
-		} else if(which == 0) {
-			//FILE *fp = (FILE *)stacum_stack_pop(vm);
-			//u64 nbyte  = stacum_stack_pop(vm);
-			//u64 bufptr = stacum_stack_pop(vm);
-			//vm->stack[vm->sp++] =
-			//	fwrite(&vm->heap[bufptr], nbyte, fp);
-			//size_t fwrite(const void ptr[restrict .size * .nmemb],
-			//	      size_t size, size_t nmemb,
-			//	      FILE *restrict stream);
-		} else if(which == 1) {
-			//u64 nbyte  = stacum_stack_pop(vm);
-			//u64 bufptr = stacum_stack_pop(vm);
-			//u64 fildes = stacum_stack_pop(vm);
-			//vm->stack[vm->sp++] =
-			//	fread(fildes, &vm->heap[bufptr], nbyte);
-			//size_t fread(void ptr[restrict .size * .nmemb],
-			//	     size_t size, size_t nmemb,
-			//	     FILE *restrict stream);
-		} else if(which == 3) {
+		} break;
+
+		case 22 : {
 			int flags = (int)stacum_stack_pop(vm);
 			char *filepath = (char *)stacum_stack_pop(vm);
 			void *handle = dlopen(filepath, flags);
 			stacum_stack_push(vm, (u64)handle);
-		} else if(which == 4) {
+		} break;
+		case 23 : {
 			char *symbol_name = (char *)stacum_stack_pop(vm);
 			void *handle = (void *)stacum_stack_pop(vm);
 			dynamic_function function =
 				(dynamic_function)dlsym(handle, symbol_name);
 			stacum_stack_push(vm, (u64)function);
-		} else if(which == 5) {
+		} break;
+		case 24 : {
 			dynamic_function function =
 				(dynamic_function)stacum_stack_pop(vm);
-			byte args = stacum_get_program_byte(vm);
+			byte args = stacum_get_program_u16(vm);
 			switch(args) {
 			case 0: { stacum_stack_push(vm, function());
 			} break;
@@ -372,26 +413,36 @@ stacum_step(Stacum_VM *vm) {
 							     stacum_stack_pop(vm)));
 			} break;
 			}
+		} break;
 		}
 	} break;
 	case JMP0 : {
+		printf("JMP0\n");
 		if(!stacum_stack_pop(vm)) {
 			goto JMP_LABEL;
+		} else {
+			stacum_get_program_u64(vm);
 		}
 	} break;
 	case CALL0 : {
 		if(!stacum_stack_pop(vm)) {
 			goto CALL_LABEL;
+		} else {
+			stacum_get_program_u64(vm);
 		}
 	} break;
 	case JMP1 : {
 		if(stacum_stack_pop(vm)) {
 			goto JMP_LABEL;
+		} else {
+			stacum_get_program_u64(vm);
 		}
 	} break;
 	case CALL1 : {
 		if(stacum_stack_pop(vm)) {
 			goto CALL_LABEL;
+		} else {
+			stacum_get_program_u64(vm);
 		}
 	} break;
 	JMP_LABEL:
